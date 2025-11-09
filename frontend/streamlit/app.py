@@ -309,7 +309,7 @@ async def send_message_local_agent(message: str, safety_mode: str = "vertex_ai")
     """Send message using local agent with configurable safety"""
     if not LOCAL_AGENT_AVAILABLE:
         st.error("Local agent not available. Using deployed agent instead.")
-        return None, None
+        return None, None, None
     
     try:
         # Get or create local agent runner
@@ -346,7 +346,7 @@ async def send_message_local_agent(message: str, safety_mode: str = "vertex_ai")
             init_success = await runner.initialize()
             if not init_success:
                 st.error("Failed to initialize local agent")
-                return None, None
+                return None, None, None
             
             st.session_state.local_agent_runner = runner
         
@@ -375,19 +375,23 @@ async def send_message_local_agent(message: str, safety_mode: str = "vertex_ai")
             safety_info["model_armor_response_violations"] = len(safety_info_obj.model_armor_response_result.violations)
         
         # Add DLP results if available
+        dlp_processed_text = None
         if safety_info_obj.dlp_prompt_result:
             dlp_result = safety_info_obj.dlp_prompt_result
             safety_info["dlp_findings"] = len(dlp_result.findings) if dlp_result.has_findings else 0
             safety_info["dlp_summary"] = dlp_result.get_summary()
             safety_info["dlp_info_types"] = dlp_result.info_type_summary if dlp_result.has_findings else None
+            safety_info["dlp_mode"] = runner.safety_config.dlp_mode
+            # Get the processed text (deidentified/redacted)
+            dlp_processed_text = dlp_result.processed_text
         
-        return response, safety_info
+        return response, safety_info, dlp_processed_text
         
     except Exception as e:
         st.error(f"Local agent error: {e}")
         import traceback
         st.code(traceback.format_exc())
-        return None, None
+        return None, None, None
 
 
 def render_sidebar():
@@ -818,7 +822,27 @@ def render_chat_interface():
             <div>{message["content"]}</div>
         """
         
-        # Add safety information if present
+        # Add DLP information if present (for user messages)
+        if message["role"] == "user":
+            safety_info = message.get("safety_info")
+            if safety_info and safety_info.get("dlp_enabled") and safety_info.get("dlp_findings", 0) > 0:
+                dlp_summary = safety_info.get("dlp_summary", "")
+                dlp_info_types = safety_info.get("dlp_info_types", "")
+                dlp_mode = safety_info.get("dlp_mode", "inspect_only")
+                
+                # Get the processed message if available
+                dlp_processed = message.get("dlp_processed_text", "")
+                
+                message_html += f"""
+                <div class="safety-info" style="margin-top: 0.5rem;">
+                    <strong>🔍 DLP Scan Results:</strong><br>
+                    <span class="safety-rating safety-rating-medium">{dlp_summary}</span>
+                    {f'<br><small>Detected: {dlp_info_types}</small>' if dlp_info_types else ''}
+                    {f'<br><br><strong>Message sent to LLM:</strong><br><code style="background-color: #f0f0f0; padding: 0.5rem; display: block; border-radius: 0.3rem; margin-top: 0.3rem;">{dlp_processed}</code>' if dlp_processed and dlp_processed != message["content"] else ''}
+                </div>
+                """
+        
+        # Add safety information if present (for assistant messages)
         safety_info = message.get("safety_info")
         if safety_info and (safety_info.get("is_blocked") or safety_info.get("safety_ratings")):
             message_html += render_safety_info(safety_info)
@@ -828,13 +852,13 @@ def render_chat_interface():
     
     # Chat input
     if prompt := st.chat_input("Type your message here..."):
-        # Add user message
+        # Add user message (will be updated with DLP info if available)
         timestamp = datetime.now().strftime("%H:%M:%S")
-        st.session_state.messages.append({
+        user_message = {
             "role": "user",
             "content": prompt,
             "timestamp": timestamp
-        })
+        }
         
         # Display user message immediately
         st.markdown(f"""
@@ -849,10 +873,11 @@ def render_chat_interface():
         
         # Get and display assistant response
         with st.spinner("🤔 Thinking..."):
+            dlp_processed_text = None
             # Choose agent based on mode
             if st.session_state.use_local_agent and LOCAL_AGENT_AVAILABLE:
                 # Use local agent with safety configuration
-                response, safety_info = asyncio.run(send_message_local_agent(
+                response, safety_info, dlp_processed_text = asyncio.run(send_message_local_agent(
                     prompt,
                     st.session_state.safety_mode
                 ))
@@ -892,6 +917,14 @@ def render_chat_interface():
                     st.session_state.user_id,
                     st.session_state.session_id
                 ))
+        
+        # Add DLP processed text to user message if available
+        if dlp_processed_text:
+            user_message["dlp_processed_text"] = dlp_processed_text
+            user_message["safety_info"] = safety_info
+        
+        # Append user message to history
+        st.session_state.messages.append(user_message)
         
         # Add assistant message with safety info
         timestamp = datetime.now().strftime("%H:%M:%S")
