@@ -57,6 +57,11 @@ class SafetyConfig:
     enable_logging: bool = True
     fail_open: bool = True  # Allow requests if Model Armor API fails
     auto_fallback: bool = True  # Automatically fallback to Vertex AI if Model Armor unavailable
+    # DLP settings
+    dlp_enabled: bool = False
+    dlp_mode: str = "inspect_only"  # inspect_only, deidentify, redact
+    dlp_method: str = "masking"     # masking, tokenization, redaction
+    dlp_info_types: Optional[list] = None  # None = use defaults
     
     @classmethod
     def from_env(cls) -> "SafetyConfig":
@@ -71,6 +76,11 @@ class SafetyConfig:
             enable_logging=os.getenv("SAFETY_LOGGING", "true").lower() == "true",
             fail_open=os.getenv("SAFETY_FAIL_OPEN", "true").lower() == "true",
             auto_fallback=os.getenv("SAFETY_AUTO_FALLBACK", "true").lower() == "true",
+            # DLP configuration
+            dlp_enabled=os.getenv("DLP_ENABLED", "false").lower() == "true",
+            dlp_mode=os.getenv("DLP_MODE", "inspect_only"),
+            dlp_method=os.getenv("DLP_METHOD", "masking"),
+            dlp_info_types=os.getenv("DLP_INFO_TYPES", "").split(",") if os.getenv("DLP_INFO_TYPES") else None,
         )
         
         # Auto-fallback to Vertex AI if Model Armor config is incomplete

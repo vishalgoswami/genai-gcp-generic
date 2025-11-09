@@ -3,6 +3,7 @@
 Google ADK-based Friendly Agent
 Uses Google Agent Development Kit with Gemini 2.0 Flash and in-memory sessions
 Supports dual safety modes: Vertex AI Safety Filters + Model Armor
+Supports DLP for sensitive data detection and protection
 """
 
 import os
@@ -14,6 +15,7 @@ from google.adk.sessions import InMemorySessionService
 from google.genai import types
 from safety_config import SafetyConfig, SafetyMode
 from model_armor_scanner import ModelArmorScanner
+from dlp_scanner import DLPScanner, DLPMode, DLPMethod, DLPResult
 
 # Load environment variables
 load_dotenv()
@@ -89,6 +91,9 @@ class SafetyInfo:
         self.model_armor_prompt_result = None
         self.model_armor_response_result = None
         self.safety_mode = "vertex_ai"
+        # DLP results
+        self.dlp_prompt_result = None
+        self.dlp_enabled = False
         
     def add_safety_rating(self, category: str, probability: str, severity: str = None, blocked: bool = False):
         """Add a safety rating."""
@@ -110,7 +115,7 @@ class SafetyInfo:
     
     def get_summary(self) -> str:
         """Get a human-readable summary of safety info."""
-        if not self.is_blocked and not self.safety_ratings and not self.model_armor_prompt_result and not self.model_armor_response_result:
+        if not self.is_blocked and not self.safety_ratings and not self.model_armor_prompt_result and not self.model_armor_response_result and not self.dlp_prompt_result:
             return None
         
         summary = []
@@ -123,6 +128,12 @@ class SafetyInfo:
                 "both": "Vertex AI + Model Armor"
             }
             summary.append(f"🔒 Safety Mode: {mode_display.get(self.safety_mode, self.safety_mode)}")
+        
+        # DLP findings
+        if self.dlp_prompt_result and self.dlp_prompt_result.has_findings:
+            summary.append(f"🔍 DLP SCAN: {self.dlp_prompt_result.get_summary()}")
+            if self.dlp_prompt_result.info_type_summary:
+                summary.append(f"   Detected: {self.dlp_prompt_result.info_type_summary}")
         
         # Vertex AI blocks
         if self.prompt_blocked:
@@ -215,6 +226,30 @@ class FriendlyAgentRunner:
                         print(f"⚠️  Falling back to Vertex AI only mode")
                         self.safety_config.mode = SafetyMode.VERTEX_AI_ONLY
                 self.model_armor_scanner = None
+        
+        # Initialize DLP scanner if needed
+        self.dlp_scanner = None
+        if self.safety_config.dlp_enabled:
+            try:
+                # Convert config values to DLP enums
+                dlp_mode = DLPMode[self.safety_config.dlp_mode.upper()] if self.safety_config.dlp_mode else DLPMode.INSPECT_ONLY
+                dlp_method = DLPMethod[self.safety_config.dlp_method.upper()] if self.safety_config.dlp_method else DLPMethod.MASKING
+                
+                self.dlp_scanner = DLPScanner(
+                    project_id=GCP_PROJECT_ID,
+                    mode=dlp_mode,
+                    method=dlp_method,
+                    info_types=self.safety_config.dlp_info_types
+                )
+                if self.safety_config.enable_logging:
+                    print(f"✓ DLP scanner initialized")
+                    print(f"  Mode: {dlp_mode.value}")
+                    print(f"  Method: {dlp_method.value}")
+            except Exception as e:
+                if self.safety_config.enable_logging:
+                    print(f"⚠️  DLP initialization failed: {e}")
+                    print(f"⚠️  Continuing without DLP protection")
+                self.dlp_scanner = None
 
         
     async def initialize(self):
@@ -254,8 +289,33 @@ class FriendlyAgentRunner:
         """
         safety_info = SafetyInfo()
         safety_info.safety_mode = self.safety_config.mode.value
+        safety_info.dlp_enabled = self.safety_config.dlp_enabled
+        
+        # Original message for potential use
+        original_message = message
         
         try:
+            # Step 0: Scan message with DLP if enabled
+            if self.safety_config.dlp_enabled and self.dlp_scanner:
+                try:
+                    dlp_result = self.dlp_scanner.process_text(message)
+                    safety_info.dlp_prompt_result = dlp_result
+                    
+                    # Use the processed text (deidentified/redacted) for sending to LLM
+                    # In INSPECT_ONLY mode, processed_text == original_text
+                    message = dlp_result.processed_text
+                    
+                    if self.safety_config.enable_logging and dlp_result.has_findings:
+                        print(f"🔍 DLP: {dlp_result.get_summary()}")
+                        print(f"   Detected: {dlp_result.info_type_summary}")
+                        
+                except Exception as e:
+                    # Fail-open: DLP errors should not block the conversation
+                    if self.safety_config.enable_logging:
+                        print(f"⚠️  DLP scan error: {e}")
+                    # Continue with original message
+                    message = original_message
+            
             # Step 1: Scan prompt with Model Armor if required
             if self.safety_config.requires_model_armor() and self.model_armor_scanner:
                 try:

@@ -20,12 +20,16 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
 try:
     from agent import FriendlyAgentRunner
     from safety_config import SafetyConfig, SafetyMode
+    from dlp_scanner import DLPScanner, DLPMode, DLPMethod
     LOCAL_AGENT_AVAILABLE = True
 except ImportError:
     LOCAL_AGENT_AVAILABLE = False
     FriendlyAgentRunner = None
     SafetyConfig = None
     SafetyMode = None
+    DLPScanner = None
+    DLPMode = None
+    DLPMethod = None
 
 # Page configuration
 st.set_page_config(
@@ -318,12 +322,21 @@ async def send_message_local_agent(message: str, safety_mode: str = "vertex_ai")
                 "both": SafetyMode.BOTH
             }
             
+            # Get DLP settings from session state
+            dlp_settings = st.session_state.get("dlp_settings", {})
+            dlp_enabled = dlp_settings.get("enabled", False)
+            dlp_mode = dlp_settings.get("mode", "inspect_only")
+            dlp_method = dlp_settings.get("method", "masking")
+            
             config = SafetyConfig(
                 mode=mode_map.get(safety_mode, SafetyMode.VERTEX_AI_ONLY),
                 model_armor_prompt_template=os.getenv("MODEL_ARMOR_PROMPT_TEMPLATE", ""),
                 model_armor_response_template=os.getenv("MODEL_ARMOR_RESPONSE_TEMPLATE", ""),
                 enable_logging=True,
-                fail_open=True
+                fail_open=True,
+                dlp_enabled=dlp_enabled,
+                dlp_mode=dlp_mode,
+                dlp_method=dlp_method
             )
             
             # Create new runner
@@ -352,6 +365,7 @@ async def send_message_local_agent(message: str, safety_mode: str = "vertex_ai")
             "response_blocked": safety_info_obj.response_blocked,
             "safety_mode": safety_info_obj.safety_mode,
             "model_armor_available": runner.model_armor_available,
+            "dlp_enabled": safety_info_obj.dlp_enabled,
         }
         
         # Add Model Armor results if available
@@ -359,6 +373,13 @@ async def send_message_local_agent(message: str, safety_mode: str = "vertex_ai")
             safety_info["model_armor_prompt_violations"] = len(safety_info_obj.model_armor_prompt_result.violations)
         if safety_info_obj.model_armor_response_result:
             safety_info["model_armor_response_violations"] = len(safety_info_obj.model_armor_response_result.violations)
+        
+        # Add DLP results if available
+        if safety_info_obj.dlp_prompt_result:
+            dlp_result = safety_info_obj.dlp_prompt_result
+            safety_info["dlp_findings"] = len(dlp_result.findings) if dlp_result.has_findings else 0
+            safety_info["dlp_summary"] = dlp_result.get_summary()
+            safety_info["dlp_info_types"] = dlp_result.info_type_summary if dlp_result.has_findings else None
         
         return response, safety_info
         
@@ -553,6 +574,91 @@ def render_sidebar():
             else:
                 st.caption("Using deployed agent with default Vertex AI safety")
         
+        # Data Privacy (DLP) Configuration
+        with st.expander("🔍 Data Privacy (DLP)", expanded=False):
+            st.markdown("### Sensitive Data Protection")
+            st.caption("Detect and protect PII/sensitive information before sending to LLM")
+            
+            # DLP enabled checkbox
+            dlp_enabled = st.checkbox(
+                "Enable DLP Scanner",
+                value=False,
+                help="Scan messages for sensitive data (emails, phone numbers, SSN, credit cards, etc.)",
+                key="dlp_enabled_checkbox"
+            )
+            
+            if dlp_enabled:
+                st.markdown("---")
+                st.markdown("**DLP Mode:**")
+                
+                # DLP mode selector
+                dlp_mode = st.radio(
+                    "Processing Mode",
+                    options=["Inspect Only", "Deidentify", "Redact"],
+                    index=0,
+                    help="• Inspect Only: Detect and report (no modifications)\n"
+                         "• Deidentify: Replace with tokens/masks (reversible)\n"
+                         "• Redact: Remove completely (permanent)",
+                    key="dlp_mode_radio"
+                )
+                
+                # DLP method selector (only for deidentify mode)
+                if dlp_mode == "Deidentify":
+                    st.markdown("---")
+                    st.markdown("**Deidentification Method:**")
+                    
+                    dlp_method = st.radio(
+                        "Method",
+                        options=["Masking", "Tokenization"],
+                        index=0,
+                        help="• Masking: Replace with asterisks (***)\n"
+                             "• Tokenization: Crypto-based reversible tokens",
+                        key="dlp_method_radio"
+                    )
+                else:
+                    dlp_method = "Masking"  # Default, not used for other modes
+                
+                # Info types configuration
+                st.markdown("---")
+                st.markdown("**Detection Settings:**")
+                
+                # Show default info types
+                default_info_types = [
+                    "EMAIL_ADDRESS", "PHONE_NUMBER", "CREDIT_CARD_NUMBER",
+                    "US_SOCIAL_SECURITY_NUMBER", "PERSON_NAME", "LOCATION"
+                ]
+                
+                st.caption(f"Default: {len(default_info_types)} info types")
+                with st.expander("View Default Info Types"):
+                    for info_type in default_info_types:
+                        st.caption(f"• {info_type}")
+                
+                # Store DLP settings in session state
+                if "dlp_settings" not in st.session_state:
+                    st.session_state.dlp_settings = {}
+                
+                st.session_state.dlp_settings = {
+                    "enabled": dlp_enabled,
+                    "mode": dlp_mode.lower().replace(" ", "_"),
+                    "method": dlp_method.lower() if dlp_mode == "Deidentify" else "masking"
+                }
+                
+                # Show current DLP status
+                st.markdown("---")
+                st.markdown("**Current Status:**")
+                if dlp_mode == "Inspect Only":
+                    st.info("🔍 Detection only (no modifications)")
+                elif dlp_mode == "Deidentify":
+                    st.warning(f"🔒 Deidentifying with {dlp_method}")
+                else:  # Redact
+                    st.error("🚫 Redacting sensitive data")
+                
+            else:
+                # Store disabled state
+                if "dlp_settings" not in st.session_state:
+                    st.session_state.dlp_settings = {}
+                st.session_state.dlp_settings["enabled"] = False
+        
         st.markdown("---")
         
         # Configuration
@@ -613,6 +719,21 @@ def render_safety_info(safety_info: Dict[str, Any]) -> str:
         
         violations_html.append('</div>')
         html.append(''.join(violations_html))
+    
+    # DLP findings
+    if safety_info.get("dlp_enabled") and safety_info.get("dlp_findings", 0) > 0:
+        dlp_html = ['<div class="safety-info">🔍 <strong>DLP Scan:</strong><br>']
+        
+        dlp_summary = safety_info.get("dlp_summary", "Sensitive data detected")
+        dlp_info_types = safety_info.get("dlp_info_types", "")
+        
+        dlp_html.append(f'<span class="safety-rating safety-rating-medium">{dlp_summary}</span>')
+        
+        if dlp_info_types:
+            dlp_html.append(f'<br><small>Detected: {dlp_info_types}</small>')
+        
+        dlp_html.append('</div>')
+        html.append(''.join(dlp_html))
     
     # Safety ratings (Vertex AI)
     if safety_info.get("safety_ratings"):
