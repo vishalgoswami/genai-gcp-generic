@@ -1,0 +1,6 @@
+google-adk>=0.2.0
+python-dotenv>=1.0.0
+
+# For deployment to Vertex AI Agent Engine (optional)
+# Uncomment the line below if deploying:
+# google-cloud-aiplatform[adk,agent_engines]>=1.111
