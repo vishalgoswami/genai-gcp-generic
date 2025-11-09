@@ -1300,6 +1300,92 @@ This project uses Google Cloud services and is subject to [Google Cloud Terms](h
 4. 🔒 **Enable Model Armor** - Contact Google Cloud for SCC Premium
 5. 📊 **Monitor** - Check Cloud Trace and logs
 6. 🚀 **Integrate** - Connect to your applications
+7. 💰 **Clean up** - Run `python cleanup.py` when done to avoid charges
+
+---
+
+## 💰 Resource Cleanup (Avoid Charges)
+
+When you're done testing, clean up GCP resources to avoid charges:
+
+```bash
+python cleanup.py
+```
+
+### Cleanup Options
+
+**Interactive Menu:**
+1. **List all deployed agents** - See what's deployed
+2. **Delete all deployed agents** - Remove Agent Engine deployments
+3. **Clean up local cache** - Remove local temporary files
+4. **Full cleanup** - Delete everything (agents + cache)
+
+**What Gets Cleaned:**
+- ✅ Vertex AI Agent Engine deployments (Reasoning Engines)
+- ✅ Local cache files (`__pycache__`, `deployed_agent_resource.txt`)
+- ℹ️ Sessions auto-expire (no manual cleanup needed)
+
+**Cost Impact:**
+- 🛑 Stops Vertex AI Agent Engine billing
+- 🛑 Terminates Reasoning Engine compute
+- 💰 Prevents unexpected charges
+
+**Example Session:**
+```bash
+$ python cleanup.py
+
+======================================================================
+GCP RESOURCE CLEANUP
+======================================================================
+
+✓ Connected to GCP Project: vg-pp-001
+✓ Location: us-central1
+
+----------------------------------------------------------------------
+CLEANUP OPTIONS:
+----------------------------------------------------------------------
+1. List all deployed agents
+2. Delete all deployed agents
+3. Clean up local cache files
+4. Full cleanup (agents + local files)
+5. Exit
+----------------------------------------------------------------------
+
+Select option (1-5): 2
+
+📋 Listing deployed agents...
+   Found 1 deployed agent(s):
+   1. friendly_agent_app
+      Resource: projects/.../reasoningEngines/6012881646632566784
+      Created: 2025-11-09 10:30:00
+
+⚠️  WARNING: This will delete ALL deployed agents!
+   Continue? (yes/no): yes
+
+🗑️  Deleting agent: friendly_agent_app
+   Resource: projects/.../reasoningEngines/6012881646632566784
+   ⏳ Deletion in progress...
+   ✓ Successfully deleted: friendly_agent_app
+
+======================================================================
+CLEANUP SUMMARY
+======================================================================
+
+✓ Successfully deleted 1 resource(s):
+   • Agent: friendly_agent_app
+
+💰 Cost Savings:
+   • Vertex AI Agent Engine: Stopped billing
+   • Reasoning Engine compute: Terminated
+   • Storage: Cleared (if any)
+======================================================================
+```
+
+**Important Notes:**
+- ⚠️ Deletion is **permanent** - you'll need to redeploy to use the agent again
+- ✅ Always run cleanup when done testing
+- 💡 Cleanup script is safe - asks for confirmation before deleting
+- 🔄 You can always redeploy with `python deploy.py`
 
 ---
 
