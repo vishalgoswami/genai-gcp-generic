@@ -833,12 +833,31 @@ def render_chat_interface():
                 # Get the processed message if available
                 dlp_processed = message.get("dlp_processed_text", "")
                 
+                # Escape HTML in the processed text
+                import html
+                dlp_processed_escaped = html.escape(dlp_processed) if dlp_processed else ""
+                dlp_info_types_escaped = html.escape(dlp_info_types) if dlp_info_types else ""
+                dlp_summary_escaped = html.escape(dlp_summary)
+                
                 message_html += f"""
                 <div class="safety-info" style="margin-top: 0.5rem;">
-                    <strong>🔍 DLP Scan Results:</strong><br>
-                    <span class="safety-rating safety-rating-medium">{dlp_summary}</span>
-                    {f'<br><small>Detected: {dlp_info_types}</small>' if dlp_info_types else ''}
-                    {f'<br><br><strong>Message sent to LLM:</strong><br><code style="background-color: #f0f0f0; padding: 0.5rem; display: block; border-radius: 0.3rem; margin-top: 0.3rem;">{dlp_processed}</code>' if dlp_processed and dlp_processed != message["content"] else ''}
+                    <strong>🔍 DLP Scan Results:</strong><br/>
+                    <span class="safety-rating safety-rating-medium">{dlp_summary_escaped}</span>"""
+                
+                if dlp_info_types_escaped:
+                    message_html += f'<br/><small><strong>Detected:</strong> {dlp_info_types_escaped}</small>'
+                
+                # Always show the processed text if DLP mode is not inspect_only
+                if dlp_mode != "inspect_only" and dlp_processed_escaped:
+                    message_html += f'''
+                    <br/><br/>
+                    <div style="background-color: #fff3cd; border-left: 3px solid #ffc107; padding: 0.5rem; border-radius: 0.3rem; margin-top: 0.5rem;">
+                        <strong>📤 Message sent to LLM (after {dlp_mode}):</strong><br/>
+                        <div style="background-color: #ffffff; padding: 0.5rem; border-radius: 0.3rem; margin-top: 0.3rem; font-family: monospace; white-space: pre-wrap; word-wrap: break-word;">{dlp_processed_escaped}</div>
+                    </div>
+                    '''
+                
+                message_html += """
                 </div>
                 """
         
