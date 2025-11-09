@@ -65,24 +65,37 @@ class GCPCleanup:
             self.errors.append(f"List agents: {e}")
             return []
     
-    async def delete_agent(self, resource_name: str, display_name: str = "Unknown"):
+    async def delete_agent(self, resource_name: str, display_name: str = "Unknown", force: bool = True):
         """Delete a specific agent"""
         try:
             print(f"\n🗑️  Deleting agent: {display_name}")
             print(f"   Resource: {resource_name}")
+            
+            if force:
+                print(f"   ⚠️  Force delete enabled (will delete child resources like sessions)")
             
             # Delete the reasoning engine
             client = aiplatform.gapic.ReasoningEngineServiceClient(
                 client_options={"api_endpoint": f"{self.location}-aiplatform.googleapis.com"}
             )
             
-            operation = client.delete_reasoning_engine(name=resource_name)
+            # Use force=True to delete child resources (sessions) automatically
+            from google.cloud.aiplatform_v1.types import DeleteReasoningEngineRequest
+            
+            request = DeleteReasoningEngineRequest(
+                name=resource_name,
+                force=force  # This will delete child resources (sessions)
+            )
+            
+            operation = client.delete_reasoning_engine(request=request)
             print("   ⏳ Deletion in progress...")
             
             # Wait for deletion to complete
             result = operation.result(timeout=300)  # 5 minutes timeout
             
             print(f"   ✓ Successfully deleted: {display_name}")
+            if force:
+                print(f"   ✓ All child resources (sessions) also deleted")
             self.deleted_resources.append(f"Agent: {display_name} ({resource_name})")
             return True
             
