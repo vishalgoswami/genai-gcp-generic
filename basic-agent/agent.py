@@ -238,7 +238,7 @@ class FriendlyAgentRunner:
                 self.dlp_scanner = DLPScanner(
                     project_id=GCP_PROJECT_ID,
                     mode=dlp_mode,
-                    method=dlp_method,
+                    deidentify_method=dlp_method,
                     info_types=self.safety_config.dlp_info_types
                 )
                 if self.safety_config.enable_logging:

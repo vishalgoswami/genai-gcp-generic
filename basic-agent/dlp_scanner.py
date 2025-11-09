@@ -37,6 +37,16 @@ class DLPResult:
     findings_count: int
     info_types_found: List[str]
     
+    @property
+    def has_findings(self) -> bool:
+        """Alias for has_sensitive_data for compatibility"""
+        return self.has_sensitive_data
+    
+    @property
+    def info_type_summary(self) -> str:
+        """Get comma-separated summary of info types found"""
+        return ", ".join(self.info_types_found) if self.info_types_found else "None"
+    
     def get_summary(self) -> str:
         """Get human-readable summary"""
         if not self.has_sensitive_data:
