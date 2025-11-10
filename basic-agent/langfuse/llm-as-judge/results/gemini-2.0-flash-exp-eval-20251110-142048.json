@@ -1,0 +1,76 @@
+{
+  "run_name": "gemini-2.0-flash-exp-eval-20251110-142048",
+  "dataset": "correctness-eval-golden",
+  "model_tested": "gemini-2.0-flash-exp",
+  "judge_model": "gemini-2.0-flash-exp",
+  "timestamp": "2025-11-10T14:21:14.901120",
+  "summary": {
+    "total_items": 2,
+    "average_score": 9.7,
+    "category_scores": {
+      "logical_reasoning": 10.0,
+      "system_design": 9.4
+    }
+  },
+  "results": [
+    {
+      "id": "test_004",
+      "category": "logical_reasoning",
+      "score": 10,
+      "eval_result": {
+        "reasoning": "The response correctly identifies that the statement 'All birds can fly' is false and that penguins cannot fly. It logically concludes that the statement \"penguins can fly is false\". Therefore the response is acceptable.",
+        "factual_accuracy": 10,
+        "completeness": 10,
+        "relevance": 10,
+        "reasoning_quality": 10,
+        "safety": 10,
+        "overall_score": 10,
+        "verdict": "excellent",
+        "key_issues": [],
+        "strengths": [
+          "Correctly identifies flawed premise",
+          "Correctly identifies that penguins cannot fly"
+        ],
+        "metadata": {
+          "id": "test_004",
+          "category": "logical_reasoning",
+          "difficulty": "medium",
+          "evaluation_criteria": "Must identify that penguins cannot fly and recognize the flawed premise"
+        },
+        "judge_model": "gemini-2.0-flash-exp",
+        "evaluator_type": "comprehensive",
+        "timestamp": "2025-11-10T14:20:51.461581"
+      }
+    },
+    {
+      "id": "test_024",
+      "category": "system_design",
+      "score": 9.4,
+      "eval_result": {
+        "reasoning": "The response is quite comprehensive and covers all the necessary aspects of designing a basic URL shortener service. It includes the core components, data model, URL shortening algorithms (with pros and cons), key functionalities, a basic implementation with Flask and PostgreSQL, and important considerations for scaling. The code is functional and provides a good starting point. However, the response can be improved with additional details. Factual accuracy is good. Completeness is very good. Relevance is excellent. Reasoning quality is high. Safety is excellent.",
+        "factual_accuracy": 9,
+        "completeness": 9,
+        "relevance": 10,
+        "reasoning_quality": 9,
+        "safety": 10,
+        "overall_score": 9.4,
+        "verdict": "excellent",
+        "key_issues": [],
+        "strengths": [
+          "Comprehensive design",
+          "Includes code example",
+          "Addresses scaling considerations"
+        ],
+        "metadata": {
+          "id": "test_024",
+          "category": "system_design",
+          "difficulty": "hard",
+          "evaluation_criteria": "Must mention: URL encoding/hashing, storage/database, redirect mechanism, and at least one scalability consideration"
+        },
+        "judge_model": "gemini-2.0-flash-exp",
+        "evaluator_type": "comprehensive",
+        "timestamp": "2025-11-10T14:21:14.899585"
+      }
+    }
+  ]
+}

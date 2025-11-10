@@ -1,0 +1,32 @@
+{
+  "run_name": "gemini-2.0-flash-exp-eval-20251110-141825",
+  "dataset": "correctness-eval-golden",
+  "model_tested": "gemini-2.0-flash-exp",
+  "judge_model": "gemini-1.5-pro",
+  "timestamp": "2025-11-10T14:18:38.954713",
+  "summary": {
+    "total_items": 3,
+    "average_score": 0.0,
+    "category_scores": {}
+  },
+  "results": [
+    {
+      "id": "test_020",
+      "category": "troubleshooting",
+      "score": 0.0,
+      "error": "'Langfuse' object has no attribute 'trace'"
+    },
+    {
+      "id": "test_014",
+      "category": "edge_case_handling",
+      "score": 0.0,
+      "error": "'Langfuse' object has no attribute 'trace'"
+    },
+    {
+      "id": "test_016",
+      "category": "historical_facts",
+      "score": 0.0,
+      "error": "'Langfuse' object has no attribute 'trace'"
+    }
+  ]
+}

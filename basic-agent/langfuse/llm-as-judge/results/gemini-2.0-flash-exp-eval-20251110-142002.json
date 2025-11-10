@@ -1,0 +1,63 @@
+{
+  "run_name": "gemini-2.0-flash-exp-eval-20251110-142002",
+  "dataset": "correctness-eval-golden",
+  "model_tested": "gemini-2.0-flash-exp",
+  "judge_model": "gemini-1.5-pro",
+  "timestamp": "2025-11-10T14:20:15.386724",
+  "summary": {
+    "total_items": 3,
+    "average_score": 0.0,
+    "category_scores": {
+      "api_usage": 0.0,
+      "scientific_concepts": 0.0,
+      "factual_knowledge": 0.0
+    }
+  },
+  "results": [
+    {
+      "id": "test_019",
+      "category": "api_usage",
+      "score": 0.0,
+      "eval_result": {
+        "error": "404 Publisher Model `projects/vg-pp-001/locations/us-central1/publishers/google/models/gemini-1.5-pro` was not found or your project does not have access to it. Please ensure you are using a valid model version. For more information, see: https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions",
+        "overall_score": 0.0,
+        "metadata": {
+          "id": "test_019",
+          "category": "api_usage",
+          "difficulty": "easy",
+          "evaluation_criteria": "Code must: use requests library, demonstrate GET request, check status code, parse JSON response"
+        }
+      }
+    },
+    {
+      "id": "test_017",
+      "category": "scientific_concepts",
+      "score": 0.0,
+      "eval_result": {
+        "error": "404 Publisher Model `projects/vg-pp-001/locations/us-central1/publishers/google/models/gemini-1.5-pro` was not found or your project does not have access to it. Please ensure you are using a valid model version. For more information, see: https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions",
+        "overall_score": 0.0,
+        "metadata": {
+          "id": "test_017",
+          "category": "scientific_concepts",
+          "difficulty": "easy",
+          "evaluation_criteria": "Must mention: sunlight, CO2, water as inputs; glucose/sugar and oxygen as outputs"
+        }
+      }
+    },
+    {
+      "id": "test_001",
+      "category": "factual_knowledge",
+      "score": 0.0,
+      "eval_result": {
+        "error": "404 Publisher Model `projects/vg-pp-001/locations/us-central1/publishers/google/models/gemini-1.5-pro` was not found or your project does not have access to it. Please ensure you are using a valid model version. For more information, see: https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions",
+        "overall_score": 0.0,
+        "metadata": {
+          "id": "test_001",
+          "category": "factual_knowledge",
+          "difficulty": "easy",
+          "evaluation_criteria": "The answer must correctly identify Paris as the capital of France. Variations like 'The capital of France is Paris' are acceptable."
+        }
+      }
+    }
+  ]
+}
